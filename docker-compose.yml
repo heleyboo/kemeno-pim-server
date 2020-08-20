@@ -1,0 +1,23 @@
+version: '3'
+
+services:
+  mysql:
+    image: 'mysql:5.7'
+    environment:
+      MYSQL_ROOT_PASSWORD: 'root'
+      MYSQL_USER: 'kemeno_pim'
+      MYSQL_PASSWORD: 'kemeno_pim'
+      MYSQL_DATABASE: 'kemeno_pim'
+    networks:
+      - 'kemeno'
+    ports:
+      - 3306:3306
+    volumes:
+      - kemeno_mysql_data:/var/lib/mysql
+
+
+networks:
+  kemeno:
+
+volumes:
+  kemeno_mysql_data:

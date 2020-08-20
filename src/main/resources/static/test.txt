@@ -1,0 +1,132 @@
+DROP PROCEDURE IF EXISTS [dbo].[LP_Master_File_Updates]
+
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE PROCEDURE [dbo].[LP_Master_File_Updates]
+AS
+BEGIN
+
+DECLARE @StdCPMUpdated bit = 0
+,@StdYieldUpdated bit = 0
+,@TheoYieldUpdated bit = 0;
+
+DELETE FROM WT_ProductMasterUpdateT;
+INSERT INTO WT_ProductMasterUpdateT(
+[Id]
+,[Code]
+,[AreaID]
+,[Description]
+,[NetWeight]
+,[AvgWeight]
+,[BottleneckCPM]
+,[StandardCPM]
+,[TheoreticalYield]
+,[StandardYield]
+,[PlanningCPM]
+,[BatchLitres]
+,[SpecificG]
+,[SteamInj]
+,[PercentTwoShot]
+,[BatchUOM]
+,[UnitUOM]
+,[ExportID]
+,[BestLineID]
+,[StdLabourRatePerHr]
+,[CostPerUnit]
+,[StdCrewSize]
+,[MeatScales]
+,[Dicer]
+,[Mincer]
+,[HiShear]
+,[SoupBMTs]
+,[Versatherm]
+,[StdCPMUpdated]
+,[StdYieldUpdated]
+,[TheoYieldUpdated]
+,[CreatedBy]
+,[CreatedAt]
+,[UpdatedBy]
+,[UpdatedAt]
+,[IsInactive])
+SELECT
+[Id]
+,[Code]
+,[AreaID]
+,[Description]
+,[NetWeight]
+,[AvgWeight]
+,[BottleneckCPM]
+,
+CASE
+WHEN [Code] = NULL THEN 0
+ELSE
+(select max(c.StdRate)
+from NonCore.dbo.CST_CrewingT c
+join NonCore.dbo.CST_CrewingProdT cp on c.CrewID = cp.CrewID
+where c.CrewType = 'OP'
+and c.DeleteFlag <> 'Y'
+and c.Facility = Facility
+and cp.ItemCode = ItemCode
+and c.FinYear = ( select Max(FinYear)
+from NonCore.dbo.CST_CrewingT t1
+join NonCore.dbo.CST_CrewingProdT t2 on t1.CrewID = t2.CrewID
+where t1.CrewType = 'OP'
+and t1.DeleteFlag <> 'Y'
+and t1.Facility = Facility
+and t2.ItemCode = ItemCode))
+END
+--[StandardCPM]
+,
+CASE
+WHEN [UnitUOM] = NULL or [UnitUOM] = 0 THEN [StandardYield]
+ELSE (select top 1 t1.Batch_Size from CIC_FacilityPlanningV t1 where t1.Facility = Facility and t1.Item_Code = Item_Code) * [UnitUOM]
+END--[StandardYield]
+,
+CASE
+WHEN BatchLitres = null or
+BatchLitres = 0 or
+SpecificG = null or
+SpecificG = 0 or
+SteamInj = null or
+SteamInj = 0 or
+PercentTwoShot = null or
+PercentTwoShot = 0 or
+NetWeight = null or
+NetWeight = 0 or
+UnitUOM = null or
+UnitUOM < 1 THEN [TheoreticalYield]
+ELSE (BatchLitres * SpecificG + SteamInj) / (PercentTwoShot / 100) / (NetWeight / UnitUOM)
+END--[TheoreticalYield]
+,[PlanningCPM]
+,[BatchLitres]
+,[SpecificG]
+,[SteamInj]
+,[PercentTwoShot]
+,[BatchUOM]
+,[UnitUOM]
+,[ExportID]
+,[BestLineID]
+,[StdLabourRatePerHr]
+,[CostPerUnit]
+,[StdCrewSize]
+,[MeatScales]
+,[Dicer]
+,[Mincer]
+,[HiShear]
+,[SoupBMTs]
+,[Versatherm]
+,1--[StdCPMUpdated]
+,1--[StdYieldUpdated]
+,1--[TheoYieldUpdated]
+,[CreatedBy]
+,[CreatedAt]
+,[UpdatedBy]
+,[UpdatedAt]
+,[IsInactive]
+FROM LP_ProductMasterT;
+END
